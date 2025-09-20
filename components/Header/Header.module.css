@@ -1,0 +1,78 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #333;
+  color: white;
+}
+
+.header a {
+  text-decoration: none;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.header a:hover {
+  color: #ddd;
+}
+
+.navigation {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 1rem;
+}
+
+.navigation li a {
+  text-decoration: none;
+  color: white;
+  font-size: 1rem;
+}
+
+.navigation li a:hover {
+  color: #ddd;
+}
+
+.navigationItem {
+  margin: 0;
+}
+
+.navigationLink {
+  display: block;
+  padding: 0.5rem 1rem;
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  border-radius: 4px;
+}
+
+.navigationLink:hover {
+  color: #007bff;
+  background-color: #f8f9fa;
+}
+
+/* Адаптивність */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    padding: 1rem;
+  }
+  
+  .navigation {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+  
+  .navigationItem {
+    width: 100%;
+  }
+  
+  .navigationLink {
+    text-align: center;
+  }
+}
