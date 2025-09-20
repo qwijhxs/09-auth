@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/lib/store/authStore';
 import { getCurrentUser } from '@/lib/api/clientApi';
+import { User } from '@/types/user';
 
 export default function AuthProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const setUser = useAuthStore((state) => state.setUser);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -17,6 +18,8 @@ export default function AuthProvider({
         const response = await getCurrentUser();
         if (response.user) {
           setUser(response.user);
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
