@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import NoteForm from '@/components/NoteForm/NoteForm';
 import css from './CreateNote.module.css';
+import { Note } from '@/types/note';
 
 export const metadata: Metadata = {
   title: "Create New Note - NoteHub",
@@ -26,11 +27,11 @@ export default function CreateNote() {
     <main className={css.main}>
       <div className={css.container}>
         <h1 className={css.title}>Create note</h1>
-        <NoteForm
-          isOpen={true}
-          onClose={() => {}}
-          onNoteCreated={() => {}}
-        />
+        <NoteForm isOpen={false} onClose={function (): void {
+          throw new Error('Function not implemented.');
+        } } onNoteCreated={function (note: Note): void {
+          throw new Error('Function not implemented.');
+        } } />
       </div>
     </main>
   );
