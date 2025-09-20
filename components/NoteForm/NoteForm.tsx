@@ -1,16 +1,16 @@
-// components/NoteForm/NoteForm.tsx
 'use client';
 
 import { useState } from 'react';
 import { createNote } from '@/lib/api/clientApi';
 import { Note } from '@/types/note';
 import css from './NoteForm.module.css';
+import { useRouter } from 'next/navigation';
 
 interface NoteFormProps {
   isOpen: boolean;
   onClose: () => void;
   onNoteCreated: (note: Note) => void;
-  onCancel?: () => void; // Додано onCancel
+  onCancel?: () => void;
 }
 
 export default function NoteForm({ 
@@ -21,51 +21,84 @@ export default function NoteForm({
 }: NoteFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const router = useRouter();
 
-  // Функція для закриття форми
   const handleCancel = () => {
     if (onCancel) {
-      onCancel(); // Викликаємо onCancel якщо він переданий
+      onCancel();
     } else {
-      onClose(); // Інакше викликаємо стандартне onClose
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    const formData = new FormData(e.currentTarget);
-    const title = formData.get('title') as string;
-    const content = formData.get('content') as string;
-    const tag = formData.get('tag') as string;
-
-    try {
-      const newNote = await createNote(title, content, tag);
-      onNoteCreated(newNote);
       onClose();
-      e.currentTarget.reset();
-    } catch (err) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Failed to create note');
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleCancel();
+    }
+  };
+
+ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError('');
+
+  const formData = new FormData(e.currentTarget);
+  const title = formData.get('title') as string;
+  const content = formData.get('content') as string;
+  const tag = formData.get('tag') as string;
+
+  try {
+    const newNote = await createNote(title, content, tag || '');
+    
+    onNoteCreated(newNote);
+    onClose();
+    e.currentTarget.reset();
+  } catch (err) {
+    const error = err as {
+      response?: {
+        data?: {
+          message?: string;
+        };
+      };
+      message?: string;
+    };
+    
+    setError(error.response?.data?.message || error.message || 'Failed to create note');
+    console.error('Error creating note:', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   if (!isOpen) return null;
 
   return (
-    <div className={css.overlay} onClick={handleCancel}>
-      <div className={css.formContainer} onClick={(e) => e.stopPropagation()}>
-        <h2 className={css.title}>Create New Note</h2>
-        
-        {error && <div className={css.error}>{error}</div>}
-        
+    <div className={css.overlay} onClick={handleOverlayClick}>
+      <div className={css.formContainer}>
+        <div className={css.header}>
+          <h2 className={css.title}>Create New Note</h2>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className={css.closeButton}
+            disabled={isLoading}
+            aria-label="Close form"
+          >
+            ×
+          </button>
+        </div>
+
+        {error && (
+          <div className={css.error}>
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className={css.form}>
           <div className={css.formGroup}>
-            <label htmlFor="title">Title</label>
+            <label htmlFor="title" className={css.label}>
+              Title *
+            </label>
             <input
               type="text"
               id="title"
@@ -73,30 +106,39 @@ export default function NoteForm({
               required
               className={css.input}
               disabled={isLoading}
+              placeholder="Enter note title"
+              maxLength={100}
             />
           </div>
 
           <div className={css.formGroup}>
-            <label htmlFor="content">Content</label>
+            <label htmlFor="content" className={css.label}>
+              Content *
+            </label>
             <textarea
               id="content"
               name="content"
               required
-              rows={4}
+              rows={6}
               className={css.textarea}
               disabled={isLoading}
+              placeholder="Write your note content here..."
+              maxLength={1000}
             />
           </div>
 
           <div className={css.formGroup}>
-            <label htmlFor="tag">Tag</label>
+            <label htmlFor="tag" className={css.label}>
+              Tag
+            </label>
             <input
               type="text"
               id="tag"
               name="tag"
-              required
               className={css.input}
               disabled={isLoading}
+              placeholder="Optional tag (e.g. work, personal)"
+              maxLength={50}
             />
           </div>
 
@@ -114,7 +156,14 @@ export default function NoteForm({
               disabled={isLoading}
               className={css.submitButton}
             >
-              {isLoading ? 'Creating...' : 'Create Note'}
+              {isLoading ? (
+                <>
+                  <span className={css.spinner}></span>
+                  Creating...
+                </>
+              ) : (
+                'Create Note'
+              )}
             </button>
           </div>
         </form>
