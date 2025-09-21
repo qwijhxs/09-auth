@@ -1,20 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useAuthStore } from '@/lib/store/authStore';
 import { getCurrentUser } from '@/lib/api/clientApi';
-import { User } from '@/types/user';
 
 export default function AuthProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [user, setUser] = useState<User | null>(null);
+  const setUser = useAuthStore((state) => state.setUser);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
+
         const response = await getCurrentUser();
         if (response.user) {
           setUser(response.user);

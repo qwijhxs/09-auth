@@ -10,7 +10,6 @@ export interface LoginData {
 export interface RegisterData {
   email: string;
   password: string;
-  username: string;
 }
 
 export interface AuthResponse {
@@ -24,7 +23,6 @@ export interface GetNotesResponse {
 }
 
 export const authApi = {
-
   login: async (data: LoginData): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>('/auth/login', data);
     return response.data;
@@ -41,7 +39,7 @@ export const authApi = {
   },
 
   getCurrentUser: async (): Promise<AuthResponse> => {
-    const response = await api.get<AuthResponse>('/auth/me');
+    const response = await api.get<AuthResponse>('/users/me'); // ← Виправлено ендпоінт
     return response.data;
   },
 
@@ -49,7 +47,9 @@ export const authApi = {
     const response = await api.patch<User>('/users/me', data);
     return response.data;
   },
+};
 
+export const notesApi = {
   fetchNotes: async (query: string, page: number, tag?: string): Promise<GetNotesResponse> => {
     const response = await api.get<GetNotesResponse>('/notes', {
       params: {
@@ -87,7 +87,7 @@ export const register = authApi.register;
 export const logout = authApi.logout;
 export const getCurrentUser = authApi.getCurrentUser;
 export const updateProfile = authApi.updateProfile;
-export const fetchNotes = authApi.fetchNotes;
-export const fetchNoteById = authApi.fetchNoteById;
-export const createNote = authApi.createNote;
-export const deleteNote = authApi.deleteNote;
+export const fetchNotes = notesApi.fetchNotes;
+export const fetchNoteById = notesApi.fetchNoteById;
+export const createNote = notesApi.createNote;
+export const deleteNote = notesApi.deleteNote;

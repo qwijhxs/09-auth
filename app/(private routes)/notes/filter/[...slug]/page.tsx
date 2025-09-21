@@ -4,12 +4,12 @@ import {
   dehydrate
 } from "@tanstack/react-query";
 import { Metadata } from "next";
-import { fetchNotes } from "@/lib/api/api";
+import { serverNotesApi } from "@/lib/api/serverApi";
 import NotesClient from "./Notes.client";
 
 interface Props {
   params: Promise<{ slug: string[] }>;
-};
+}
 
 interface GenerateMetadataProps {
   params: Promise<{ slug: string[] }>;
@@ -45,9 +45,10 @@ export default async function Notes({ params }: Props) {
   const tag = slug[0] === "All" ? undefined : slug[0];
 
   const queryClient = new QueryClient();
+
   await queryClient.prefetchQuery({
     queryKey: ["notes", tag],
-    queryFn: () => fetchNotes("", 1, tag)
+    queryFn: () => serverNotesApi.getNotes("", 1, tag)
   });
 
   return (

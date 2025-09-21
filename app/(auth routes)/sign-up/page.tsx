@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@/lib/api/clientApi';
+import { register } from '@/lib/api/clientApi';
 import type { RegisterData } from '@/lib/api/clientApi';
+import { useAuthStore } from '@/lib/store/authStore';
 import css from './page.module.css';
 
 export default function SignUp() {
   const router = useRouter();
+  const setUser = useAuthStore((state) => state.setUser);
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -20,12 +22,13 @@ export default function SignUp() {
     const data: RegisterData = {
       email: formData.get('email') as string,
       password: formData.get('password') as string,
-      username: formData.get('username') as string,
     };
 
     try {
-      const response = await authApi.register(data);
+      const response = await register(data);
       console.log('Registration successful:', response.user);
+
+      setUser(response.user);
 
       router.push('/profile');
     } catch (err: unknown) {

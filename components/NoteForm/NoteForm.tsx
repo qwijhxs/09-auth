@@ -1,34 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { createNote } from '@/lib/api/clientApi';
 import { Note } from '@/types/note';
 import css from './NoteForm.module.css';
-import { useRouter } from 'next/navigation';
 
 interface NoteFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onNoteCreated: (note: Note) => void;
-  onCancel?: () => void;
+  onNoteCreated?: (note: Note) => void;
+}
+
+interface NoteFormData {
+  title: string;
+  content: string;
+  tag: string;
 }
 
 export default function NoteForm({ 
   isOpen, 
   onClose, 
-  onNoteCreated, 
-  onCancel 
+  onNoteCreated 
 }: NoteFormProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<NoteFormData>({
+    title: '',
+    content: '',
+    tag: ''
+  });
   const [error, setError] = useState('');
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (noteData: NoteFormData) =>
+      createNote(noteData.title, noteData.content, noteData.tag),
+    onSuccess: (newNote: Note) => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      setFormData({ title: '', content: '', tag: '' });
+      onNoteCreated?.(newNote);
+      onClose();
+      router.back();
+    },
+    onError: (err: unknown) => {
+      const error = err as {
+        response?: {
+          data?: {
+            message?: string;
+          };
+        };
+        message?: string;
+      };
+      setError(error.response?.data?.message || error.message || 'Failed to create note');
+      console.error('Error creating note:', err);
+    }
+  });
 
   const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
-    } else {
-      onClose();
-    }
+    setFormData({ title: '', content: '', tag: '' });
+    onClose();
+    router.back();
   };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -37,38 +69,18 @@ export default function NoteForm({
     }
   };
 
- const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setIsLoading(true);
-  setError('');
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    mutation.mutate(formData);
+  };
 
-  const formData = new FormData(e.currentTarget);
-  const title = formData.get('title') as string;
-  const content = formData.get('content') as string;
-  const tag = formData.get('tag') as string;
-
-  try {
-    const newNote = await createNote(title, content, tag || '');
-    
-    onNoteCreated(newNote);
-    onClose();
-    e.currentTarget.reset();
-  } catch (err) {
-    const error = err as {
-      response?: {
-        data?: {
-          message?: string;
-        };
-      };
-      message?: string;
-    };
-    
-    setError(error.response?.data?.message || error.message || 'Failed to create note');
-    console.error('Error creating note:', error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  const handleInputChange = (field: keyof NoteFormData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   if (!isOpen) return null;
 
@@ -81,7 +93,7 @@ export default function NoteForm({
             type="button"
             onClick={handleCancel}
             className={css.closeButton}
-            disabled={isLoading}
+            disabled={mutation.isPending}
             aria-label="Close form"
           >
             ×
@@ -103,9 +115,11 @@ export default function NoteForm({
               type="text"
               id="title"
               name="title"
+              value={formData.title}
+              onChange={(e) => handleInputChange('title', e.target.value)}
               required
               className={css.input}
-              disabled={isLoading}
+              disabled={mutation.isPending}
               placeholder="Enter note title"
               maxLength={100}
             />
@@ -118,10 +132,12 @@ export default function NoteForm({
             <textarea
               id="content"
               name="content"
+              value={formData.content}
+              onChange={(e) => handleInputChange('content', e.target.value)}
               required
               rows={6}
               className={css.textarea}
-              disabled={isLoading}
+              disabled={mutation.isPending}
               placeholder="Write your note content here..."
               maxLength={1000}
             />
@@ -135,8 +151,10 @@ export default function NoteForm({
               type="text"
               id="tag"
               name="tag"
+              value={formData.tag}
+              onChange={(e) => handleInputChange('tag', e.target.value)}
               className={css.input}
-              disabled={isLoading}
+              disabled={mutation.isPending}
               placeholder="Optional tag (e.g. work, personal)"
               maxLength={50}
             />
@@ -147,16 +165,16 @@ export default function NoteForm({
               type="button"
               onClick={handleCancel}
               className={css.cancelButton}
-              disabled={isLoading}
+              disabled={mutation.isPending}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={mutation.isPending}
               className={css.submitButton}
             >
-              {isLoading ? (
+              {mutation.isPending ? (
                 <>
                   <span className={css.spinner}></span>
                   Creating...
