@@ -1,54 +1,50 @@
+import { Metadata } from "next";
+
 import {
   QueryClient,
   HydrationBoundary,
   dehydrate
 } from "@tanstack/react-query";
-import { Metadata } from "next";
-import { serverNotesApi } from "@/lib/api/serverApi";
+
+import { fetchNotes } from "@/lib/api/clientApi";
+
 import NotesClient from "./Notes.client";
 
 interface Props {
   params: Promise<{ slug: string[] }>;
 }
 
-interface GenerateMetadataProps {
-  params: Promise<{ slug: string[] }>;
-}
-
-export async function generateMetadata({ params }: GenerateMetadataProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const tag = slug[0] === "All" ? undefined : slug[0];
-  const filterName = tag || "All notes";
-  
+  const tag: string = slug[0] === "All" ? "All" : slug[0];
+
   return {
-    title: `${filterName} - NoteHub`,
-    description: `Browse ${filterName.toLowerCase()} in NoteHub. Manage and organize your notes with easy filtering options.`,
+    title: `Notes - ${tag}`,
+    description: `Showing notes with ${tag} filter.`,
     openGraph: {
-      title: `${filterName} - NoteHub`,
-      description: `Browse ${filterName.toLowerCase()} in NoteHub. Manage and organize your notes with easy filtering options.`,
-      url: `https://your-app-url.com/notes/filter/${slug.join('/')}`,
+      title: `Notes - ${tag}`,
+      description: `Showing notes with ${tag} filter.`,
+      url: `${process.env.NEXT_PUBLIC_API_URL}`,
       images: [
         {
           url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
           width: 1200,
           height: 630,
-          alt: `NoteHub - ${filterName} Filter`,
-        },
-      ],
-      type: "website",
-    },
+          alt: "NoteHub icon."
+        }
+      ]
+    }
   };
 }
 
 export default async function Notes({ params }: Props) {
   const { slug } = await params;
-  const tag = slug[0] === "All" ? undefined : slug[0];
+  const tag: undefined | string = slug[0] === "All" ? undefined : slug[0];
 
   const queryClient = new QueryClient();
-
   await queryClient.prefetchQuery({
     queryKey: ["notes", tag],
-    queryFn: () => serverNotesApi.getNotes("", 1, tag)
+    queryFn: () => fetchNotes("", 1, tag)
   });
 
   return (

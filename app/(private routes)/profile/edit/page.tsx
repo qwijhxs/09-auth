@@ -1,103 +1,67 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { useAuthStore } from '@/lib/store/authStore';
-import { authApi } from '@/lib/api/clientApi';
-import css from './page.module.css';
+import css from "./page.module.css";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { updateMe } from "@/lib/api/clientApi";
+import { useAuthStore } from "@/lib/store/authStore";
 
-export default function EditProfile() {
-  const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const setUser = useAuthStore((state) => state.setUser);
-  const [username, setUsername] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+export default function EditProfilePage() {
+    const router = useRouter();
+    const { user } = useAuthStore();
+    const setUser = useAuthStore(
+        (state) => state.setUser
+    );
 
-  useEffect(() => {
-    if (user) {
-      setUsername(user.username);
-    }
-  }, [user]);
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+        event.preventDefault();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
+        setUser(await updateMe({
+            username: (event.currentTarget.elements as unknown as { username: HTMLInputElement }).username.value, // New username.
+            email: user?.email as string
+        }));
 
-    try {
-      const updatedUser = await authApi.updateProfile({ username });
-      setUser(updatedUser);
-      router.push('/profile');
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Update failed');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        router.push("/profile");
+    };
 
-  const handleCancel = () => {
-    router.push('/profile');
-  };
+    return (
+        <div className={css.mainContent}>
+            <div className={css.profileCard}>
+                <h1 className={css.formTitle}>Edit Profile</h1>
 
-  if (!user) {
-    return null;
-  }
+                {user?.avatar &&
+                    <Image
+                        src={user?.avatar as string}
+                        alt={`${user?.username} avatar.`}
+                        width={120}
+                        height={120}
+                        className={css.avatar}
+                    />}
 
-  return (
-    <main className={css.mainContent}>
-      <div className={css.profileCard}>
-        <h1 className={css.formTitle}>Edit Profile</h1>
+                <form className={css.profileInfo} onSubmit={handleSubmit}>
+                    <div className={css.usernameWrapper}>
+                        <label htmlFor="username">Username:</label>
+                        <input id="username"
+                            type="text"
+                            className={css.input}
+                            defaultValue={user?.username}
+                            required
+                        />
+                    </div>
 
-        <Image
-          src={user.avatar || '/avatar-placeholder.png'}
-          alt="User Avatar"
-          width={120}
-          height={120}
-          className={css.avatar}
-        />
+                    <p>Email: {user?.email}</p>
 
-        <form className={css.profileInfo} onSubmit={handleSubmit}>
-          <div className={css.usernameWrapper}>
-            <label htmlFor="username">Username:</label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className={css.input}
-              disabled={isLoading}
-            />
-          </div>
+                    <div className={css.actions}>
+                        <button type="submit" className={css.saveButton}>
+                            Save
+                        </button>
+                        <button type="button" className={css.cancelButton} onClick={() => router.push("/profile")}>
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-          <p>Email: {user.email}</p>
-
-          {error && <p className={css.error}>{error}</p>}
-
-          <div className={css.actions}>
-            <button
-              type="submit"
-              className={css.saveButton}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Saving...' : 'Save'}
-            </button>
-            <button
-              type="button"
-              className={css.cancelButton}
-              onClick={handleCancel}
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </main>
-  );
+    );
 }

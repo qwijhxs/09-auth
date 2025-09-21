@@ -1,34 +1,33 @@
-'use client';
+"use client"
 
-import { useEffect } from 'react';
-import { useAuthStore } from '@/lib/store/authStore';
-import { getCurrentUser } from '@/lib/api/clientApi';
+import { checkSession, getMe } from "@/lib/api/clientApi";
+import { useAuthStore } from "@/lib/store/authStore";
+import { useEffect, useState } from "react";
+import Loading from "@/app/loading";
 
 export default function AuthProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const setUser = useAuthStore((state) => state.setUser);
+    children
+}: Readonly<{
+    children: React.ReactNode
+}>) {
+    const setUser = useAuthStore((state) => state.setUser);
+    const clearIsAuthenticated = useAuthStore((state) => state.clearIsAuthenticated);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { success } = await checkSession();
+            
+            if (success) {
+                const user = await getMe();
+                if (user) setUser(user);
+            } else {
+                clearIsAuthenticated();
+            }
+            setIsLoading(false);
+        };
+        fetchUser();
+    }, [setUser, clearIsAuthenticated]);
 
-        const response = await getCurrentUser();
-        if (response.user) {
-          setUser(response.user);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setUser(null);
-      }
-    };
-
-    checkAuth();
-  }, [setUser]);
-
-  return <>{children}</>;
+    return isLoading ? <Loading /> : children;
 }

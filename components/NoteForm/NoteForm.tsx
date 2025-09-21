@@ -1,191 +1,93 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { createNote } from '@/lib/api/clientApi';
-import { Note } from '@/types/note';
-import css from './NoteForm.module.css';
+import css from "./NoteForm.module.css";
+import { useRouter } from "next/navigation";
+import { useId } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createNote } from "@/lib/api/clientApi";
+import { useNoteDraftStore } from "@/lib/store/noteStore";
+import { NoteFormValues } from "@/types/note";
 
-interface NoteFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onNoteCreated?: (note: Note) => void;
-}
+export default function NoteForm() {
+    const formId = useId();
 
-interface NoteFormData {
-  title: string;
-  content: string;
-  tag: string;
-}
-
-export default function NoteForm({ 
-  isOpen, 
-  onClose, 
-  onNoteCreated 
-}: NoteFormProps) {
-  const [formData, setFormData] = useState<NoteFormData>({
-    title: '',
-    content: '',
-    tag: ''
-  });
-  const [error, setError] = useState('');
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: (noteData: NoteFormData) =>
-      createNote(noteData.title, noteData.content, noteData.tag),
-    onSuccess: (newNote: Note) => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-      setFormData({ title: '', content: '', tag: '' });
-      onNoteCreated?.(newNote);
-      onClose();
-      router.back();
-    },
-    onError: (err: unknown) => {
-      const error = err as {
-        response?: {
-          data?: {
-            message?: string;
-          };
-        };
-        message?: string;
-      };
-      setError(error.response?.data?.message || error.message || 'Failed to create note');
-      console.error('Error creating note:', err);
+    const { draft, setDraft, clearDraft } = useNoteDraftStore();
+    
+    const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setDraft({
+            ...draft,
+            [event.target.name]: event.target.value
+        });
     }
-  });
 
-  const handleCancel = () => {
-    setFormData({ title: '', content: '', tag: '' });
-    onClose();
-    router.back();
-  };
+    const router = useRouter();
+    const handleClose = (): void => router.back();
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleCancel();
-    }
-  };
+    const queryClient = useQueryClient();
+    const mutation = useMutation({
+        mutationFn: async ({ title, content, tag }: NoteFormValues) => await createNote(title, content, tag),
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ["notes"] });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError('');
-    mutation.mutate(formData);
-  };
+            clearDraft();
+            handleClose();
+        }
+    });
 
-  const handleInputChange = (field: keyof NoteFormData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+    const handleSubmit = (formData: FormData): void => {
+        mutation.mutate({
+            title: formData.get("title") as string,
+            content: formData.get("content") as string,
+            tag: formData.get("tag") as "Todo" | "Work" | "Personal" | "Meeting" | "Shopping"
+        });
+    };
 
-  if (!isOpen) return null;
+    return (
+        <form className={css.form} action={handleSubmit}>
+            <div className={css.formGroup}>
+                <label htmlFor={`${formId}-title`}>Title</label>
+                <input className={css.input} id={`${formId}-title`} type="text" name="title" value={draft?.title} onChange={handleChange} minLength={3} maxLength={50} required />
+            </div>
 
-  return (
-    <div className={css.overlay} onClick={handleOverlayClick}>
-      <div className={css.formContainer}>
-        <div className={css.header}>
-          <h2 className={css.title}>Create New Note</h2>
-          <button
-            type="button"
-            onClick={handleCancel}
-            className={css.closeButton}
-            disabled={mutation.isPending}
-            aria-label="Close form"
-          >
-            ×
-          </button>
-        </div>
+            <div className={css.formGroup}>
+                <label htmlFor={`${formId}-content`}>Content</label>
+                <textarea
+                    className={css.textarea}
+                    id={`${formId}-content`}
+                    name="content"
+                    value={draft?.content}
+                    onChange={handleChange}
+                    rows={8}
+                    maxLength={500}
+                />
+            </div>
 
-        {error && (
-          <div className={css.error}>
-            {error}
-          </div>
-        )}
+            <div className={css.formGroup}>
+                <label htmlFor={`${formId}-tag`}>Tag</label>
+                <select className={css.select} id={`${formId}-tag`} name="tag" value={draft?.tag} onChange={handleChange} required>
+                    <option value="Todo">Todo</option>
+                    <option value="Work">Work</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Meeting">Meeting</option>
+                    <option value="Shopping">Shopping</option>
+                </select>
+            </div>
 
-        <form onSubmit={handleSubmit} className={css.form}>
-          <div className={css.formGroup}>
-            <label htmlFor="title" className={css.label}>
-              Title *
-            </label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
-              required
-              className={css.input}
-              disabled={mutation.isPending}
-              placeholder="Enter note title"
-              maxLength={100}
-            />
-          </div>
-
-          <div className={css.formGroup}>
-            <label htmlFor="content" className={css.label}>
-              Content *
-            </label>
-            <textarea
-              id="content"
-              name="content"
-              value={formData.content}
-              onChange={(e) => handleInputChange('content', e.target.value)}
-              required
-              rows={6}
-              className={css.textarea}
-              disabled={mutation.isPending}
-              placeholder="Write your note content here..."
-              maxLength={1000}
-            />
-          </div>
-
-          <div className={css.formGroup}>
-            <label htmlFor="tag" className={css.label}>
-              Tag
-            </label>
-            <input
-              type="text"
-              id="tag"
-              name="tag"
-              value={formData.tag}
-              onChange={(e) => handleInputChange('tag', e.target.value)}
-              className={css.input}
-              disabled={mutation.isPending}
-              placeholder="Optional tag (e.g. work, personal)"
-              maxLength={50}
-            />
-          </div>
-
-          <div className={css.buttons}>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className={css.cancelButton}
-              disabled={mutation.isPending}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={mutation.isPending}
-              className={css.submitButton}
-            >
-              {mutation.isPending ? (
-                <>
-                  <span className={css.spinner}></span>
-                  Creating...
-                </>
-              ) : (
-                'Create Note'
-              )}
-            </button>
-          </div>
+            <div className={css.actions}>
+                <button
+                    className={css.cancelButton}
+                    type="button"
+                    onClick={handleClose}
+                >
+                    Cancel
+                </button>
+                <button
+                    className={css.submitButton}
+                    type="submit"
+                >
+                    Create note
+                </button>
+            </div>
         </form>
-      </div>
-    </div>
-  );
+    );
 }

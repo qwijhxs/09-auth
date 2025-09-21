@@ -1,101 +1,66 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { register } from '@/lib/api/clientApi';
-import type { RegisterData } from '@/lib/api/clientApi';
+import css from "./page.module.css";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { type AuthRequest } from "@/types/user";
+import { register } from "@/lib/api/clientApi";
 import { useAuthStore } from '@/lib/store/authStore';
-import css from './page.module.css';
+import { ApiError } from "@/app/api/api";
 
-export default function SignUp() {
-  const router = useRouter();
-  const setUser = useAuthStore((state) => state.setUser);
-  const [error, setError] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+export default function SignUpPage() {
+    const router = useRouter();
+    const [error, setError] = useState<string>("");
+    const setUser = useAuthStore((state) => state.setUser)
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsLoading(true);
-    setError('');
+    const handleSubmit = async (formData: FormData): Promise<void> => {
+        try {
+            const formValues = Object.fromEntries(formData) as unknown as AuthRequest;
 
-    const formData = new FormData(event.currentTarget);
-    const data: RegisterData = {
-      email: formData.get('email') as string,
-      password: formData.get('password') as string,
+            const emailRegex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+            if (!emailRegex.test(formValues.email)) {
+                setError("Invalid email format.");
+                return;
+            }
+
+            const response = await register(formValues);
+            if (response) {
+                setUser(response);
+                router.push("/profile");
+            } else {
+                setError("Invalid email or password.");
+            }
+        } catch (error) {
+            setError(
+                (error as ApiError).response?.data?.error ??
+                (error as ApiError).message ??
+                "Something went wrong..."
+            );
+        }
     };
 
-    try {
-      const response = await register(data);
-      console.log('Registration successful:', response.user);
+    return (
+        <div className={css.mainContent}>
+            <h1 className={css.formTitle}>Sign up</h1>
+	        <form className={css.form} action={handleSubmit}>
+                <div className={css.formGroup}>
+                    <label htmlFor="email">Email</label>
+                    <input id="email" type="email" name="email" className={css.input} required />
+                </div>
 
-      setUser(response.user);
+                <div className={css.formGroup}>
+                    <label htmlFor="password">Password</label>
+                    <input id="password" type="password" name="password" className={css.input} minLength={6} required />
+                </div>
 
-      router.push('/profile');
-    } catch (err: unknown) {
-      console.error('Registration failed:', err);
-      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
-        setError((err.response as { data: { message?: string } }).data.message || 'Registration failed. Please try again.');
-      } else {
-        setError('Registration failed. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+                <div className={css.actions}>
+                    <button type="submit" className={css.submitButton}>
+                        Register
+                    </button>
+                </div>
 
-  return (
-    <main className={css.mainContent}>
-      <h1 className={css.formTitle}>Sign up</h1>
-      <form className={css.form} onSubmit={handleSubmit}>
-        <div className={css.formGroup}>
-          <label htmlFor="username">Username</label>
-          <input 
-            id="username" 
-            type="text" 
-            name="username" 
-            className={css.input} 
-            required 
-            disabled={isLoading}
-          />
+                {error && <p className={css.error}>{error}</p>}
+            </form>
         </div>
-
-        <div className={css.formGroup}>
-          <label htmlFor="email">Email</label>
-          <input 
-            id="email" 
-            type="email" 
-            name="email" 
-            className={css.input} 
-            required 
-            disabled={isLoading}
-          />
-        </div>
-
-        <div className={css.formGroup}>
-          <label htmlFor="password">Password</label>
-          <input 
-            id="password" 
-            type="password" 
-            name="password" 
-            className={css.input} 
-            required 
-            disabled={isLoading}
-            minLength={6}
-          />
-        </div>
-
-        <div className={css.actions}>
-          <button 
-            type="submit" 
-            className={css.submitButton} 
-            disabled={isLoading}
-          >
-            {isLoading ? 'Registering...' : 'Register'}
-          </button>
-        </div>
-
-        {error && <p className={css.error}>{error}</p>}
-      </form>
-    </main>
-  );
+    );
 }

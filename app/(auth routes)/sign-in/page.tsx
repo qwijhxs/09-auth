@@ -1,56 +1,61 @@
-'use client';
+"use client"
 
-import { login } from '@/lib/api/clientApi';
+import css from "./page.module.css";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { type AuthRequest } from "@/types/user";
+import { login } from "@/lib/api/clientApi";
 import { useAuthStore } from '@/lib/store/authStore';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { ApiError } from "@/app/api/api";
 
-import css from './page.module.css';
+export default function SignInPage() {
+    const router = useRouter();
+    const [error, setError] = useState<string>("");
+    const setUser = useAuthStore((state) => state.setUser)
 
-export default function SignIn() {
-  const [error, setError] = useState('');
+    const handleSubmit = async (formData: FormData): Promise<void> => {
+        try {
+            const formValues = Object.fromEntries(formData) as unknown as AuthRequest;
+            const response = await login(formValues);
 
-  const router = useRouter();
-  const setUser = useAuthStore((state) => state.setUser);
+            if (response) {
+                setUser(response);
+                router.push("/profile");
+            } else {
+                setError("Invalid email or password.");
+            }
+        } catch (error) {
+            setError(
+                (error as ApiError).response?.data?.error ??
+                (error as ApiError).message ??
+                "Something went wrong..."
+            );
+        }
+    };
 
-  const handleSubmit = async (formData: FormData) => {
-    try {
-      const formValues = Object.fromEntries(formData) as { email: string; password: string };
-      const res = await login(formValues);
-      if (res && res.user) {
-        setUser(res.user);
-        router.replace('/profile');
-      } else {
-        setError('Invalid email or password');
-      }
-    } catch (error) {
-      console.log('error', error);
-      setError('Invalid email or password');
-    }
-  };
+    return (
+        <div className={css.mainContent}>
+            <form className={css.form} action={handleSubmit}>
+                <h1 className={css.formTitle}>Sign in</h1>
 
-  return (
-    <main className={css.mainContent}>
-      <h1 className={css.formTitle}>Sign in</h1>
-      <form action={handleSubmit} className={css.form}>
-        <div className={css.formGroup}>
-          <label htmlFor="email">Email</label>
-          <input type="email" name="email" id="email" required className={css.input} />
+                <div className={css.formGroup}>
+                    <label htmlFor="email">Email</label>
+                    <input id="email" type="email" name="email" className={css.input} required />
+                </div>
+
+                <div className={css.formGroup}>
+                    <label htmlFor="password">Password</label>
+                    <input id="password" type="password" name="password" className={css.input} minLength={6} required />
+                </div>
+
+                <div className={css.actions}>
+                    <button type="submit" className={css.submitButton}>
+                        Log in
+                    </button>
+                </div>
+
+                <p className={css.error}>{error}</p>
+            </form>
         </div>
-
-        <div className={css.formGroup}>
-          <label htmlFor="password">Password</label>
-          <input type="password" name="password" id="password" required className={css.input} />
-        </div>
-
-        <div className={css.actions}>
-          <button type="submit" className={css.submitButton}>
-            Log in
-          </button>
-        </div>
-
-        {error && <p className={css.error}>{error}</p>}
-      </form>
-    </main>
-  );
+    );
 }
